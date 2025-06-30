@@ -169,30 +169,67 @@ def download_pdf():
     if "user" not in session:
         return redirect(url_for("login"))
 
+    from fpdf import FPDF
+    import re
+
     prob = session.get("last_prob", 0)
     advice = session.get("last_advice", "No advice available.")
     user = session["user"]
     role = session.get("last_role", "Unknown")
 
-    # Clean advice for latin1 PDF encoding
+    # Load metrics from file
+    metrics_text = "No metrics available."
+    if os.path.exists("static/metrics.txt"):
+        with open("static/metrics.txt") as f:
+            metrics_text = f.read()
+
+    # Clean advice for latin1
     clean_advice = re.sub(r'[^\x00-\xFF]+', '', advice)
 
     pdf = FPDF()
     pdf.add_page()
+
+    # Header
     pdf.set_font("Arial", 'B', 16)
-    pdf.cell(200, 10, "Startup Success Prediction Result", ln=True, align='C')
+    pdf.cell(200, 10, "Startup Success Prediction Report", ln=True, align='C')
 
     pdf.set_font("Arial", size=12)
     pdf.ln(10)
     pdf.cell(200, 10, f"User: {user}", ln=True)
     pdf.cell(200, 10, f"Role: {role}", ln=True)
     pdf.cell(200, 10, f"Predicted Success Probability: {prob}%", ln=True)
+
+    pdf.ln(5)
     pdf.multi_cell(0, 10, f"Advice: {clean_advice}")
+
+    # Section: Model Metrics
+    pdf.set_font("Arial", 'B', 14)
+    pdf.ln(10)
+    pdf.cell(200, 10, "Model Evaluation Metrics", ln=True)
+    pdf.set_font("Arial", size=11)
+    pdf.multi_cell(0, 8, metrics_text)
+
+    # Section: Plots
+    def add_image(path, title, w=180):
+        if os.path.exists(path):
+            pdf.set_font("Arial", 'B', 13)
+            pdf.ln(5)
+            pdf.cell(200, 10, title, ln=True)
+            pdf.image(path, w=w)
+            pdf.ln(5)
+
+    add_image("static/prob_chart.png", "Prediction Probability Chart")
+    add_image("static/confusion_matrix.png", "Confusion Matrix")
+    add_image("static/univariate_funding_total_usd.png", "Univariate: Funding Total")
+    add_image("static/univariate_funding_rounds.png", "Univariate: Funding Rounds")
+    add_image("static/univariate_avg_participants.png", "Univariate: Avg Participants")
+    add_image("static/multivariate_heatmap.png", "Multivariate: Feature Correlation Heatmap")
 
     file_path = "static/startup_result.pdf"
     pdf.output(file_path)
 
     return send_file(file_path, as_attachment=True)
+
 
 if __name__ == "__main__":
     app.run(debug=True)
