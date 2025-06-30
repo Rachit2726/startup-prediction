@@ -5,7 +5,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import json
-import re
+import os
+from generate_analysis import run_analysis
+if not os.path.exists("static/metrics.txt"):
+    run_analysis()
+
 
 app = Flask(__name__)
 app.secret_key = "startup_secret_key"
